@@ -27,8 +27,8 @@ public class GestionnaireLivraison : MonoBehaviour
     public float tempsMax = 60f; // 1 minute
     private float tempsRestant;
     private float tempsEcoule;
-    private bool jeuDemarre = false;
-    private bool jeuTermine = false;
+    public bool jeuDemarre = false;
+    public bool jeuTermine = false;
     private int livraisonsFaites = 0;
 
     // --- Score ---
