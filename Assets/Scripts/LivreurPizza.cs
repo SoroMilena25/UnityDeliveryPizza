@@ -1,15 +1,12 @@
 using UnityEngine;
-
 public class LivreurPizza : MonoBehaviour
 {
     private GestionnaireLivraison gestionnaire;
-
     void Start()
     {
         gestionnaire = FindAnyObjectByType<GestionnaireLivraison>();
     }
-
-    // Fonction si ton b‚timent a un collider normal (choc physique)
+    // Fonction si ton b√¢timent a un collider normal (choc physique)
     void OnCollisionEnter(Collision collision)
     {
         if (collision.gameObject.CompareTag("Building"))
@@ -17,8 +14,7 @@ public class LivreurPizza : MonoBehaviour
             ValiderMaison(collision.gameObject);
         }
     }
-
-    // Fonction si ton b‚timent a un "Is Trigger" (passage ‡ travers)
+    // Fonction si ton b√¢timent a un "Is Trigger" (passage √† travers)
     void OnTriggerEnter(Collider other)
     {
         if (other.CompareTag("Building"))
@@ -26,7 +22,6 @@ public class LivreurPizza : MonoBehaviour
             ValiderMaison(other.gameObject);
         }
     }
-
     // La logique de validation (commune aux deux types de chocs)
     void ValiderMaison(GameObject batimentTouche)
     {
@@ -36,18 +31,26 @@ public class LivreurPizza : MonoBehaviour
             gestionnaire.ciblesActuelles.Remove(batimentTouche);
             gestionnaire.ValiderUneLivraison();
 
-            // 1. On arrÍte le clignotement
+            // 1. On arr√™te le clignotement
             ClignotementCible clignotement = batimentTouche.GetComponent<ClignotementCible>();
             if (clignotement != null)
             {
                 Destroy(clignotement);
             }
 
-            // 2. On met la maison en vert
-            Renderer renderer = batimentTouche.GetComponent<Renderer>();
-            if (renderer != null)
+            // 2. On supprime le marqueur minimap
+            MarqueurMinimap marqueur = batimentTouche.GetComponent<MarqueurMinimap>();
+            if (marqueur != null)
             {
-                renderer.material.color = Color.green;
+                marqueur.SupprimerMarqueur();
+            }
+
+            // 3. On met la maison en vert
+            // GetComponentsInChildren g√®re les b√¢timents avec plusieurs renderers enfants
+            Renderer[] renderers = batimentTouche.GetComponentsInChildren<Renderer>();
+            foreach (Renderer r in renderers)
+            {
+                r.material.color = Color.green;
             }
         }
     }

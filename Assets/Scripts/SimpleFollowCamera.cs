@@ -2,18 +2,18 @@ using UnityEngine;
 
 public class SimpleFollowCamera : MonoBehaviour
 {
-    [Tooltip("L'objet que la caméra doit suivre (votre joueur)")]
+    [Tooltip("L'objet que la camÃ©ra doit suivre (votre joueur)")]
     public Transform target;
 
-    [Tooltip("La distance fixe entre la caméra et le joueur")]
+    [Tooltip("La distance fixe entre la camÃ©ra et le joueur")]
     public Vector3 offset = new Vector3(0, 10, -5);
 
-    [Tooltip("Vitesse de suivi (plus c'est haut, plus c'est réactif)")]
+    [Tooltip("Vitesse de suivi (plus c'est haut, plus c'est rÃ©actif)")]
     public float smoothSpeed = 0.125f;
 
     void Start()
     {
-        // On essaie de trouver le joueur dès le début
+        // On essaie de trouver le joueur dÃ¨s le dÃ©but
         ChercherJoueur();
     }
 
@@ -24,14 +24,14 @@ public class SimpleFollowCamera : MonoBehaviour
         {
             ChercherJoueur();
 
-            // S'il n'est toujours pas apparu dans la scène, on annule pour cette frame
+            // S'il n'est toujours pas apparu dans la scÃ¨ne, on annule pour cette frame
             if (target == null) return;
         }
 
         // On calcule la position cible
         Vector3 desiredPosition = target.position + offset;
 
-        // On déplace la caméra vers la position cible
+        // On dÃ©place la camÃ©ra vers la position cible
         transform.position = Vector3.Lerp(transform.position, desiredPosition, smoothSpeed);
 
         // Rotation fixe manuellement

@@ -4,7 +4,7 @@ using System.Linq;
 using UnityEngine.SceneManagement;
 using System.Collections;
 using TMPro;
-using UnityEngine.InputSystem; // Ajout pour le nouveau systËme d'inputs
+using UnityEngine.InputSystem; // Ajout pour le nouveau syst√®me d'inputs
 
 public class GestionnaireLivraison : MonoBehaviour
 {
@@ -16,8 +16,12 @@ public class GestionnaireLivraison : MonoBehaviour
     [Header("Interface (UI)")]
     [Tooltip("Glissez ici le texte UI qui affichera le timer")]
     public TextMeshProUGUI timerText;
-    [Tooltip("Glissez ici le texte UI pour les messages (Commencer, GagnÈ, Perdu)")]
+    [Tooltip("Glissez ici le texte UI pour les messages (Commencer, Gagn√©, Perdu)")]
     public TextMeshProUGUI messageText;
+    [Tooltip("Glissez ici le texte UI pour le score")]
+    public TextMeshProUGUI scoreText;
+    [Tooltip("Glissez ici le texte UI pour le popup de tip (+X pts)")]
+    public TextMeshProUGUI tipPopupText;
 
     [Header("Jeu & Timer")]
     public float tempsMax = 60f; // 1 minute
@@ -27,15 +31,23 @@ public class GestionnaireLivraison : MonoBehaviour
     private bool jeuTermine = false;
     private int livraisonsFaites = 0;
 
+    // --- Score ---
+    [Header("Score")]
+    public int scoreTipBase = 100;          // points de base par livraison r√©ussie
+    public float bonusTempsMultiplier = 2f; // points bonus par seconde restante
+    private int scoreTotal = 0;
+
     public List<GameObject> ciblesActuelles = new List<GameObject>();
 
     void Start()
     {
         tempsRestant = tempsMax;
-        if (messageText != null) messageText.text = "Chargement des villes...";
-        if (timerText != null) timerText.text = "Temps : 60.0 s";
+        if (messageText != null)  messageText.text = "Chargement des villes...";
+        if (timerText != null)    timerText.text = "Temps : 60.0 s";
+        if (scoreText != null)    scoreText.text = "Score : 0";
+        if (tipPopupText != null) tipPopupText.gameObject.SetActive(false);
 
-        // Chargement additif des deux scËnes
+        // Chargement additif des deux sc√®nes
         SceneManager.LoadScene("City2", LoadSceneMode.Additive);
         SceneManager.LoadScene("City3", LoadSceneMode.Additive);
 
@@ -44,13 +56,17 @@ public class GestionnaireLivraison : MonoBehaviour
 
     IEnumerator InitRoutine()
     {
-        // On attend 5 secondes pour s'assurer que les deux scËnes sont bien chargÈes
-        yield return new WaitForSeconds(5f);
+        // Attente s√©curis√©e : on v√©rifie que les sc√®nes sont bien charg√©es
+        // (plus fiable que WaitForSeconds qui pouvait rater sur les machines lentes)
+        yield return new WaitUntil(() =>
+            SceneManager.GetSceneByName("City2").isLoaded &&
+            SceneManager.GetSceneByName("City3").isLoaded
+        );
 
         ChoisirMaisonsAuHasard();
 
-        // Les maps sont chargÈes, on invite le joueur ‡ commencer
-        if (messageText != null) messageText.text = "Cliquez n'importe o˘ pour commencer !";
+        // Les maps sont charg√©es, on invite le joueur √† commencer
+        if (messageText != null) messageText.text = "Cliquez n'importe o√π pour commencer !";
     }
 
     void Update()
@@ -69,20 +85,28 @@ public class GestionnaireLivraison : MonoBehaviour
         if (jeuDemarre && !jeuTermine)
         {
             tempsRestant -= Time.deltaTime; // Le temps diminue
-            tempsEcoule += Time.deltaTime;  // On compte combien de temps s'est ÈcoulÈ
+            tempsEcoule += Time.deltaTime;  // On compte combien de temps s'est √©coul√©
 
-            // Mise ‡ jour de l'affichage du timer
+            // Mise √† jour de l'affichage du timer
             if (timerText != null)
                 timerText.text = "Temps : " + Mathf.Max(0, tempsRestant).ToString("F1") + " s";
 
-            // DÈfaite : Temps ÈcoulÈ
+            // Couleur du timer selon urgence
+            if (timerText != null)
+            {
+                if (tempsRestant <= 10f)      timerText.color = Color.red;
+                else if (tempsRestant <= 20f) timerText.color = Color.yellow;
+                else                          timerText.color = Color.white;
+            }
+
+            // D√©faite : Temps √©coul√©
             if (tempsRestant <= 0)
             {
                 FinDePartie(false);
             }
 
             // Victoire : Toutes les livraisons sont faites
-            if (livraisonsFaites >= ciblesActuelles.Count)
+            if (livraisonsFaites >= 3) // toujours 3 maisons par partie
             {
                 FinDePartie(true);
             }
@@ -101,38 +125,79 @@ public class GestionnaireLivraison : MonoBehaviour
         if (buildings.Count > 0)
             return buildings[Random.Range(0, buildings.Count)];
 
-        Debug.LogWarning("Aucun b‚timent avec le tag 'Building' trouvÈ dans : " + quartier.name);
+        Debug.LogWarning("Aucun b√¢timent avec le tag 'Building' trouv√© dans : " + quartier.name);
         return null;
     }
 
-    // Fonction ‡ appeler depuis le script du LIVREUR quand il touche une maison
+    // Fonction √† appeler depuis le script du LIVREUR quand il touche une maison
     public void ValiderUneLivraison()
     {
         if (jeuTermine || !jeuDemarre) return;
 
         livraisonsFaites++;
-        Debug.Log("Pizza livrÈe ! Total : " + livraisonsFaites + "/" + ciblesActuelles.Count);
+
+        // Calcul du tip : base + bonus selon temps restant
+        int tip = scoreTipBase + Mathf.RoundToInt(tempsRestant * bonusTempsMultiplier);
+        AjouterScore(tip);
+
+        Debug.Log("Pizza livr√©e ! Total : " + livraisonsFaites + "/3 ‚Äî Tip : " + tip + " pts");
+    }
+
+    // Gestion du score et affichage du popup
+    private void AjouterScore(int montant)
+    {
+        scoreTotal += montant;
+
+        if (scoreText != null)
+            scoreText.text = "Score : " + scoreTotal;
+
+        // Affiche le popup de tip
+        if (tipPopupText != null)
+        {
+            tipPopupText.text = "+" + montant + " pts !";
+            tipPopupText.gameObject.SetActive(true);
+            CancelInvoke(nameof(CacherPopup));
+            Invoke(nameof(CacherPopup), 1.5f);
+        }
+    }
+
+    private void CacherPopup()
+    {
+        if (tipPopupText != null)
+            tipPopupText.gameObject.SetActive(false);
     }
 
     void FinDePartie(bool victoire)
     {
         jeuTermine = true;
 
+        // Sauvegarde du high score
+        int highScore = PlayerPrefs.GetInt("HighScore", 0);
+        if (scoreTotal > highScore)
+        {
+            PlayerPrefs.SetInt("HighScore", scoreTotal);
+            PlayerPrefs.Save();
+        }
+
         if (victoire)
         {
-            messageText.text = "GAGN… ! Temps : " + tempsEcoule.ToString("F1") + " s";
+            messageText.text = "GAGN√â ! Temps : " + tempsEcoule.ToString("F1") + " s\n"
+                             + "Score : " + scoreTotal + " pts\n"
+                             + "Record : " + PlayerPrefs.GetInt("HighScore", 0) + " pts";
             messageText.color = Color.green;
         }
         else
         {
-            messageText.text = "PERDU ! Trop lent pour les pizzas...";
+            messageText.text = "PERDU ! Trop lent pour les pizzas...\n"
+                             + livraisonsFaites + "/3 pizzas livr√©es\n"
+                             + "Score : " + scoreTotal + " pts";
             messageText.color = Color.red;
         }
     }
 
     void ChoisirMaisonsAuHasard()
     {
-        // On cherche dynamiquement les deux quartiers fraÓchement chargÈs
+        // On cherche dynamiquement les deux quartiers fra√Æchement charg√©s
         quartier3 = GameObject.Find("Quartier3"); // Vient de City2
         quartier2 = GameObject.Find("Quartier2"); // Vient de City3
 
@@ -143,7 +208,7 @@ public class GestionnaireLivraison : MonoBehaviour
         AjouterCible(quartier3);
     }
 
-    // Petite fonction intermÈdiaire pour simplifier l'ajout
+    // Petite fonction interm√©diaire pour simplifier l'ajout
     void AjouterCible(GameObject quartier)
     {
         GameObject maison = GetMaisonAleatoire(quartier);
@@ -151,10 +216,16 @@ public class GestionnaireLivraison : MonoBehaviour
         {
             ciblesActuelles.Add(maison);
 
-            // MAGIE : On ajoute le script de clignotement automatiquement au b‚timent !
+            // MAGIE : On ajoute le script de clignotement automatiquement au b√¢timent !
             if (maison.GetComponent<ClignotementCible>() == null)
             {
                 maison.AddComponent<ClignotementCible>();
+            }
+
+            // On ajoute aussi le marqueur minimap automatiquement !
+            if (maison.GetComponent<MarqueurMinimap>() == null)
+            {
+                maison.AddComponent<MarqueurMinimap>();
             }
         }
     }
