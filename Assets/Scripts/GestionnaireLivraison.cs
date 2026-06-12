@@ -16,7 +16,7 @@ public class GestionnaireLivraison : MonoBehaviour
     [Header("Interface (UI)")]
     [Tooltip("Glissez ici le texte UI qui affichera le timer")]
     public TextMeshProUGUI timerText;
-    [Tooltip("Glissez ici le texte UI pour les messages (Commencer, Gagné, Perdu)")]
+    [Tooltip("Glissez ici le texte UI pour les messages (Gagné, Perdu)")]
     public TextMeshProUGUI messageText;
     [Tooltip("Glissez ici le texte UI pour le score")]
     public TextMeshProUGUI scoreText;
@@ -27,8 +27,8 @@ public class GestionnaireLivraison : MonoBehaviour
     public float tempsMax = 60f; // 1 minute
     private float tempsRestant;
     private float tempsEcoule;
-    public bool jeuDemarre = false;
-    public bool jeuTermine = false;
+    public bool jeuDemarre = false; // public pour que MenuManager et PlayerMovement puissent y accéder
+    public bool jeuTermine = false; // public pour que PlayerMovement puisse bloquer les inputs en fin de partie
     private int livraisonsFaites = 0;
 
     // --- Score ---
@@ -42,9 +42,9 @@ public class GestionnaireLivraison : MonoBehaviour
     void Start()
     {
         tempsRestant = tempsMax;
-        if (messageText != null)  messageText.text = "Chargement des villes...";
         if (timerText != null)    timerText.text = "Temps : 60.0 s";
         if (scoreText != null)    scoreText.text = "Score : 0";
+        if (messageText != null)  messageText.text = ""; // On vide le messageText au démarrage
         if (tipPopupText != null) tipPopupText.gameObject.SetActive(false);
 
         // Chargement additif des deux scènes
@@ -64,24 +64,12 @@ public class GestionnaireLivraison : MonoBehaviour
         );
 
         ChoisirMaisonsAuHasard();
-
-        // Les maps sont chargées, on invite le joueur à commencer
-        if (messageText != null) messageText.text = "Cliquez n'importe où pour commencer !";
+        // Le menu gère maintenant l'invitation à commencer, plus besoin de messageText ici
     }
 
     void Update()
     {
-        // 1. Attente du clic pour commencer avec le New Input System
-        if (!jeuDemarre && !jeuTermine && ciblesActuelles.Count > 0)
-        {
-            if (Mouse.current != null && Mouse.current.leftButton.wasPressedThisFrame)
-            {
-                jeuDemarre = true;
-                if (messageText != null) messageText.text = ""; // On cache le message
-            }
-        }
-
-        // 2. Le jeu tourne
+        // Le jeu tourne uniquement si démarré et non terminé
         if (jeuDemarre && !jeuTermine)
         {
             tempsRestant -= Time.deltaTime; // Le temps diminue
@@ -171,24 +159,15 @@ public class GestionnaireLivraison : MonoBehaviour
     {
         jeuTermine = true;
 
-        // Sauvegarde du high score
-        int highScore = PlayerPrefs.GetInt("HighScore", 0);
-        if (scoreTotal > highScore)
-        {
-            PlayerPrefs.SetInt("HighScore", scoreTotal);
-            PlayerPrefs.Save();
-        }
-
         if (victoire)
         {
-            messageText.text = "GAGNÉ ! Temps : " + tempsEcoule.ToString("F1") + " s\n"
-                             + "Score : " + scoreTotal + " pts\n"
-                             + "Record : " + PlayerPrefs.GetInt("HighScore", 0) + " pts";
+            messageText.text = "GAGNÉ !!\n"
+                             + "Score : " + scoreTotal + " pts";
             messageText.color = Color.green;
         }
         else
         {
-            messageText.text = "PERDU ! Trop lent pour les pizzas...\n"
+            messageText.text = "PERDU !!\n"
                              + livraisonsFaites + "/3 pizzas livrées\n"
                              + "Score : " + scoreTotal + " pts";
             messageText.color = Color.red;
