@@ -23,6 +23,8 @@ public class MarqueurMinimapLivreur : MonoBehaviour
         marqueurObj = GameObject.CreatePrimitive(PrimitiveType.Quad);
         marqueurObj.name = "MarqueurMinimapLivreur";
 
+        DestroyImmediate(marqueurObj.GetComponent<MeshCollider>());
+
         // 2. Orienter le quad à plat (face vers la caméra minimap qui regarde vers le bas)
         marqueurObj.transform.rotation = Quaternion.Euler(90f, 0f, 0f);
         marqueurObj.transform.localScale = new Vector3(taille, taille, taille);
@@ -41,7 +43,7 @@ public class MarqueurMinimapLivreur : MonoBehaviour
         marqueurObj.layer = layer;
 
         // 5. Supprimer le collider (pas d'interaction physique)
-        Destroy(marqueurObj.GetComponent<MeshCollider>());
+        //Destroy(marqueurObj.GetComponent<MeshCollider>());
 
         // 6. Appliquer la couleur avec shader Unlit (visible sans lumière)
         Renderer r = marqueurObj.GetComponent<Renderer>();
